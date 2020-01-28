@@ -9,7 +9,6 @@ app = Flask(__name__)
 def home():
     if not session.get('logged_in'):
         return render_template('login.html')
-       
     else:
        return 'Hello Boss!'
 
@@ -32,14 +31,14 @@ def example():
 
 data = [0,1,2,3,4,5,6]
 
- for j in data :
+for j in data :
     print (data[j])
 
-@app.route('/num')
-def getAllProducts(data):
-     for i in data:
-         print (data[i])
-         return getAllProducts(data)        
+# @app.route('/num')
+# def getAllProducts(data):
+#      for i in data:
+#          print (data[i])
+#          return getAllProducts(data)        
 
 
 if __name__ == "__main__":
