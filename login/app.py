@@ -12,7 +12,7 @@ crsr = conn.cursor()
 def get_product(conn):
     try:
         cnxn = conn.cursor()
-        cnxn.execute('select * from products where productid = 24596')
+        cnxn.execute('select * from products where productid = 24596') #change this query
         rows = cnxn.fetchall()
         return rows
     except Exception as err:
