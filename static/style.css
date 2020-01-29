@@ -1,14 +1,13 @@
- /* * {
+*{
     box-sizing: border-box;
-    }
-    
-    *:focus {
+  } 
+*:focus {
     outline: none;
-    }
+  }
     body {
-    font-family: Arial;
-    background-color: rgb(10, 10, 10);
-    padding: 50px;
+      font-family: Arial;
+      background-color: rgb(10, 10, 10);
+      padding: 50px;
     }
     .login {
     margin: 20px auto;
@@ -76,5 +75,5 @@
     display: block;
     margin-top: 12px;
     } 
- */
+ 
 
