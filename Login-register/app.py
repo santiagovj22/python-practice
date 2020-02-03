@@ -5,12 +5,13 @@ from wtforms import StringField, PasswordField, BooleanField
 from wtforms.validators import InputRequired, Email, Length
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'mamamelamamamelavalaropa'
 Bootstrap(app)
 
 class LoginForm(FlaskForm):
-    username = StringField('username', validators=[InputRequired().Length(min=4, max = 80)])
+    username = StringField('username', validators=[InputRequired(),Length(min=4, max = 80)])
     password = PasswordField('password', validators=[InputRequired(), Length(min=8, max = 80)])
-    remember = BooleanField('remember mq')
+    remember = BooleanField('remember me')
 
 @app.route('/')
 def index():
@@ -18,8 +19,9 @@ def index():
 
 @app.route('/login')
 def login():
-    from 
-    return render_template('login.html' form = form)
+    form = LoginForm()
+
+    return render_template('login.html', form = form)
 
 @app.route('/signup')
 def signup():
