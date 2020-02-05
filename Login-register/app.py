@@ -9,7 +9,7 @@ app.config['SECRET_KEY'] = 'mamamelamamamelavalaropa'
 Bootstrap(app)
 
 class LoginForm(FlaskForm):
-    username = StringField('username', validators=[InputRequired(),Length(min=4, max = 80)])
+    username = StringField('username', validators=[InputRequired(), Length(min=4, max = 80)])
     password = PasswordField('password', validators=[InputRequired(), Length(min=8, max = 80)])
     remember = BooleanField('remember me')
 
@@ -23,15 +23,22 @@ class RegisterForm(FlaskForm):
 def index():
     return render_template('index.html')
 
-@app.route('/login')
+@app.route('/login', methods=["GET", "POST"])
 def login():
     form = LoginForm()
 
+    if form.validate_on_submit():
+        print( form.username.data + ' ' + form.password.data )
+
     return render_template('login.html', form = form)
 
-@app.route('/register')
+@app.route('/register', methods=["GET", "POST"])
 def signup():
     form = RegisterForm()
+
+    if form.validate_on_submit():
+        print( form.username.data + ' ' + form.email.data + ' ' + form.password.data )
+
     return render_template('signup.html', form = form)
 
 @app.route('/dashboard')
