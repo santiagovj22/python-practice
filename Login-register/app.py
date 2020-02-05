@@ -3,6 +3,9 @@ from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField
 from wtforms.validators import InputRequired, Email, Length
+import pyodbc
+
+conn = pyodbc.connect('DRIVER={PostgreSQL Unicode};SERVER=10.4.28.183;DATABASE=postgres;UID=postgres;PWD=developer2020')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mamamelamamamelavalaropa'
@@ -31,13 +34,19 @@ def login():
         print( form.username.data + ' ' + form.password.data )
 
     return render_template('login.html', form = form)
+    
 
 @app.route('/register', methods=["GET", "POST"])
 def signup():
     form = RegisterForm()
 
     if form.validate_on_submit():
-        print( form.username.data + ' ' + form.email.data + ' ' + form.password.data )
+        cnxn=conn.cursor()
+        insert_user ='''INSERT INTO users( name,email,password, roleid, lastname, id, address,status) VALUES(?,?,?,?,?,?,?,?)'''
+        cnxn.execute(insert_user, form.username.data, form.email.data, form.password.data, 1, '', '','',1)
+        cnxn.commit()
+
+        return '<h1>' + form.username.data + ' ' + form.email.data + ' welcome' + '</h1>'
 
     return render_template('signup.html', form = form)
 
