@@ -41,7 +41,7 @@ def convert_json(data): #function for convert to json, in the iterator use the i
         }
 
         #print(_json)
-        data_user.append(_json) #insert data in array
+        data_user.append(_json) #insert data in list
     return data_user
 
 
