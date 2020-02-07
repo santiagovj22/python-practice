@@ -5,6 +5,7 @@ from wtforms import StringField, PasswordField, BooleanField
 from wtforms.validators import InputRequired, Email, Length
 import pyodbc
 import json
+import bcrypt
 
 conn = pyodbc.connect('DRIVER={PostgreSQL Unicode};SERVER=10.4.28.183;DATABASE=postgres;UID=postgres;PWD=developer2020')
 
@@ -48,21 +49,20 @@ def convert_json(data):
 def index():
     data=extraction_data(conn)
     users=convert_json(data)
-
+    
     return json.dumps({"Users" : users})
     #return render_template('index.html')
 
 @app.route('/login', methods=["GET", "POST"])
-def login():
+def login(users):
     form = LoginForm()
 
-   # if form.validate_on_submit():
-
+   #if form.validate_on_submit():
+       
          
        # print( form.username.data + ' ' + form.password.data )
 
     return render_template('login.html', form = form)
-    
 
 @app.route('/register', methods=["GET", "POST"])
 def signup():
@@ -70,11 +70,14 @@ def signup():
 
     if form.validate_on_submit():
         cnxn=conn.cursor()
+        form.password.data = form.password.data.encode()
+        salt = bcrypt.gensalt(10)
+        hashed = bcrypt.hashpw(form.password.data, salt)
         insert_user ='''INSERT INTO users( name,email,password, roleid, lastname, id, address,status) VALUES(?,?,?,?,?,?,?,?)'''
-        cnxn.execute(insert_user, form.username.data, form.email.data, form.password.data, 1, '', '','',1)
+        cnxn.execute(insert_user, form.username.data, form.email.data, hashed, 1, '', '','',1)
         cnxn.commit()
 
-        print(form.email.data + '---> user has been created') 
+        print(form.email.data + ' ---> user has been created') 
 
     return render_template('signup.html', form = form)
 
