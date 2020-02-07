@@ -7,31 +7,31 @@ import pyodbc
 import json
 import bcrypt
 
-conn = pyodbc.connect('DRIVER={PostgreSQL Unicode};SERVER=10.4.28.183;DATABASE=postgres;UID=postgres;PWD=developer2020')
+conn = pyodbc.connect('DRIVER={PostgreSQL Unicode};SERVER=10.4.28.183;DATABASE=postgres;UID=postgres;PWD=developer2020') #driver connection
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'mamamelamamamelavalaropa'
+app.config['SECRET_KEY'] = 'mamamelamamamelavalaropa' #secret key 
 Bootstrap(app)
 
-class LoginForm(FlaskForm):
+class LoginForm(FlaskForm): #generate inputs login
     username = StringField('username', validators=[InputRequired(), Length(min=4, max = 80)])
     password = PasswordField('password', validators=[InputRequired(), Length(min=8, max = 80)])
     remember = BooleanField('remember me')
 
-class RegisterForm(FlaskForm):
+class RegisterForm(FlaskForm): #generate inputs register
     email = StringField('email', validators=[InputRequired(), Email(message='Invalid email'), Length(max=50)])
     username = StringField('username', validators=[InputRequired(),Length(min=4, max = 80)])
     password = PasswordField('password', validators=[InputRequired(), Length(min=8, max = 80)])
 
 def extraction_data(conn):
     cnxn = conn.cursor()
-    cnxn.execute('select userid, email, password from users where status = 1')
+    cnxn.execute('select userid, email, password from users where status = 1') #query for show all users
     data = cnxn.fetchall()
     cnxn.commit()
 
     return data
 
-def convert_json(data):
+def convert_json(data): #function for convert to json, in the iterator use the index corresponding to the rows in a DB
     data_user = []
     for i in data:
         _json = {
@@ -41,23 +41,23 @@ def convert_json(data):
         }
 
         #print(_json)
-        data_user.append(_json)
+        data_user.append(_json) #insert data in array
     return data_user
 
 
 @app.route('/')
 def index():
     data=extraction_data(conn)
-    users=convert_json(data)
+    users=convert_json(data) #pass the params to convert
     
-    return json.dumps({"Users" : users})
+    return json.dumps({"Users" : users}) 
     #return render_template('index.html')
 
 @app.route('/login', methods=["GET", "POST"])
-def login(users):
+def login():
     form = LoginForm()
 
-   #if form.validate_on_submit():
+      #if form.validate_on_submit():
        
          
        # print( form.username.data + ' ' + form.password.data )
@@ -66,26 +66,26 @@ def login(users):
 
 @app.route('/register', methods=["GET", "POST"])
 def signup():
-    form = RegisterForm()
+    form = RegisterForm() #instance an object from a class registerForm
 
-    if form.validate_on_submit():
-        cnxn=conn.cursor()
-        password = form.password.data.encode()
-        salt = bcrypt.gensalt(10)
-        hashed = bcrypt.hashpw(password, salt)
+    if form.validate_on_submit(): #if the form send good
+        cnxn=conn.cursor()#necesary for make a query
+        password = form.password.data.encode()#password must be enconde to binary
+        salt = bcrypt.gensalt(12)
+        hashed = bcrypt.hashpw(password, salt)# pass hashed
 
         if bcrypt.checkpw(password,hashed):
             print('si es')
         else:
             print('no es')    
 
-        insert_user ='''INSERT INTO users( name,email,password, roleid, lastname, id, address,status) VALUES(?,?,?,?,?,?,?,?)'''
-        cnxn.execute(insert_user, form.username.data, form.email.data, hashed, 1, '', '','',1)
-        cnxn.commit()
+        insert_user ='''INSERT INTO users( name,email,password, roleid, lastname, id, address,status) VALUES(?,?,?,?,?,?,?,?)''' #query for save in the database
+        cnxn.execute(insert_user, form.username.data, form.email.data, hashed, 1, '', '','',1) #execute the query
+        cnxn.commit()#exit connection
 
         print(form.email.data + ' ---> user has been created') 
 
-    return render_template('signup.html', form = form)
+    return render_template('signup.html', form = form) #shows the templates
 
 @app.route('/dashboard')
 def dashboard():
