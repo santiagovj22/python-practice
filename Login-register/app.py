@@ -70,9 +70,15 @@ def signup():
 
     if form.validate_on_submit():
         cnxn=conn.cursor()
-        form.password.data = form.password.data.encode()
+        password = form.password.data.encode()
         salt = bcrypt.gensalt(10)
-        hashed = bcrypt.hashpw(form.password.data, salt)
+        hashed = bcrypt.hashpw(password, salt)
+
+        if bcrypt.checkpw(password,hashed):
+            print('si es')
+        else:
+            print('no es')    
+
         insert_user ='''INSERT INTO users( name,email,password, roleid, lastname, id, address,status) VALUES(?,?,?,?,?,?,?,?)'''
         cnxn.execute(insert_user, form.username.data, form.email.data, hashed, 1, '', '','',1)
         cnxn.commit()
