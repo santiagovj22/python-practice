@@ -3,7 +3,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def init() :
-    return 'calculadora'
+    return 'calculadora en la ruta operaciones'
 
 @app.route('/operaciones', methods = ["GET", "POST"])
 def calculadora():    
