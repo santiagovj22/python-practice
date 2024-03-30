@@ -1,0 +1,228 @@
+#!venv/bin/python3
+
+import logging
+import logging.config
+
+import sqlalchemy
+from sqlalchemy.orm import sessionmaker
+
+import uuid
+
+import argparse
+
+from os import path
+
+from config.app_conf import app_conf
+from models.asset import Asset
+from models.asset_class import AssetClass,AssetClassMembership
+from models.attribute import Attribute,AttributeType
+from models.relation import Relation,RelationType
+
+def _getTable(session,tableModel,filterarg):
+    if(filterarg is None):
+        table = session.query(tableModel).all()
+    return table
+
+def _addAssetClass(session,name,displayname,description):
+    assetClass = session.query(AssetClass) \
+                    .filter(AssetClass.classname==str(name)).first()
+    if(assetClass is None):
+        assetClass = AssetClass(classname=str(name),display_name=str(displayname),description=description)
+        session.add(assetClass)
+    return assetClass
+
+def _addAsset(session,name,assetclass,uuid = 'Default Generated'): # for fatnodes the uuid is not default generated
+    asset = session.query(Asset) \
+               .filter(Asset.title.contains(name)).first()
+    if(asset is None):
+        if(uuid=='Default Generated'):
+            asset = Asset(title=str(name),classes=[assetclass])
+        else:
+            asset = Asset(uuid=uuid, title=str(name),classes=[assetclass])
+
+        session.add(asset)
+        tempasset = session.query(Asset) \
+               .filter(Asset.title.contains(name)).first()
+        print("Added asset:",name,"with uuid: ", tempasset.uuid)
+    else:
+        print("Asset",name,"with uuid:", asset.uuid, "already existed")
+    return asset
+
+def _addAttributeType(session,typename,name,description,unique=False,is_id=False):
+    attributeType = session.query(AttributeType) \
+                      .filter(AttributeType.typename==typename) \
+                      .filter(AttributeType.unique==unique) \
+                      .filter(AttributeType.identifier==is_id).first()
+    if(attributeType is None):
+        attributeType = AttributeType(typename=typename, display_name=name, description=description, unique=unique, identifier=is_id)
+        session.add(attributeType)
+    return attributeType
+ 
+def _addAttribute(session,asset,typename,value,is_id=False):
+    attribute = session.query(Attribute) \
+                      .filter(Attribute.asset==asset) \
+                      .filter(Attribute.typename==typename) \
+                      .filter(Attribute.value==value) \
+                      .filter(Attribute.is_id==is_id) \
+                      .filter(Attribute.active==True).first()
+    if(attribute is None):
+        attribute = Attribute(typename=typename, asset=asset, value=value, is_id=is_id, active=True)
+        session.add(attribute)
+    return attribute
+
+def _addRelationType(session,typename,display_name,unique_src,unique_dst,description=None):
+    relationType = session.query(RelationType)\
+                    .filter(RelationType.typename == typename) \
+                    .filter(RelationType.unique_src == unique_src) \
+                    .filter(RelationType.unique_dst == unique_dst).first()
+    if(relationType is None):
+        relationType = RelationType(typename = typename, display_name = display_name, description = description, unique_src = unique_src, unique_dst = unique_dst)
+        session.add(relationType)
+    return relationType
+
+def _addRelation(session,typename,asset_src,asset_dst):
+    relation = session.query(Relation) \
+                  .filter(Relation.typename == typename) \
+                  .filter(Relation.asset_src == asset_src) \
+                  .filter(Relation.asset_dst == asset_dst) \
+                  .filter(Relation.active == True).first()
+    if(relation is None):
+        relation = Relation(typename = typename, asset_src = asset_src, asset_dst = asset_dst, active=True)
+        session.add(relation)
+    return relation
+
+def get(args):
+    session = sessionmk()
+    if(args.type == 'assets'):
+        for entry in _getTable(session,Asset,args.filter):
+            print("Title: ",entry.title," Class: ",entry.classes," UUID: ",entry.uuid)
+    if(args.type == 'attributes'):
+        for entry in _getTable(session,Attribute,args.filter):
+            print("Name: ",entry.typename," Asset: ",entry.asset.title," Value: ",entry.value," UUID: ",entry.uuid," Active: ",entry.active)
+    if(args.type == 'relations'):
+        for entry in _getTable(session,Relation,args.filter):
+            print("Type: ",entry.typename," From: ",entry.asset_src.title," To: ",entry.asset_dst.title," UUID: ",entry.uuid," Active: ",entry.active)
+    session.close()
+
+def fatnode(args):
+    session = sessionmk()
+
+    datavanAssetClass = _addAssetClass(session,"oilandgas:datavan","Datavan","NULL")
+    datavanAsset = _addAsset(session,str(args.DataVanNumber),datavanAssetClass)
+
+    fatnodeAssetClass = _addAssetClass(session,"eku:sophia:fatnode","EKU Sophia Fatnode","NULL")
+    fatnodeAsset = _addAsset(session,"EKU Fatnode "+args.FatnodeTN,fatnodeAssetClass, args.FatnodeUUID)
+
+    assetIdAttributeType = _addAttributeType(session,"asset:id","Asset Identifier","Asset Identifier as used in third-party asset management system",is_id=True)
+    datavanAssetIdAttribute = _addAttribute(session,datavanAsset,assetIdAttributeType.typename,str(args.DataVanNumber))
+
+    trackingNumberAttributeType = _addAttributeType(session,"eku:tn","EKU Asset Tracking Number","EKU Power Drives product tracking ID",is_id=True)
+    fatnodeAssetIdAttribute = _addAttribute(session,fatnodeAsset,trackingNumberAttributeType.typename,str(args.FatnodeTN))
+    
+    fatnodeRelation = _addRelation(session,'equipment:installed-in',fatnodeAsset,datavanAsset)
+
+    session.commit()
+    session.close()
+
+def pump(args):
+    session = sessionmk()
+
+    pumpAssetClass = _addAssetClass(session,"oilandgas:frac-pump","Frac Pump","Fracturing Pump Unit")
+    pumpAsset = _addAsset(session,"Frac Pump #"+str(args.pumpNumber),pumpAssetClass)
+
+    ruthAssetClass = _addAssetClass(session,"eku:esc:ruth","EKU ESC Ruth","ESC Ruth")
+    ruthAsset = _addAsset(session,"EKU Ruth "+args.ruthTN,ruthAssetClass)
+
+    assetIdAttributeType = _addAttributeType(session,"asset:id","Asset Identifier","Asset Identifier as used in third-party asset management system",is_id=True)
+    pumpAssetIdAttribute = _addAttribute(session,pumpAsset,assetIdAttributeType.typename,str(args.pumpNumber))
+
+    idleAFCAttributeType = _addAttributeType(session,"engine:afc:idle","Engine Idle Fuel Rate","Fuel consumption of Engine without workload",unique=True)
+    pumpIdleAFCAttribute = _addAttribute(session,pumpAsset,idleAFCAttributeType.typename,str(args.idleAFC))
+
+    co2FactorAttributeType = _addAttributeType(session,"engine:co2","CO2 per fuel rate","Mass of CO2 per volume fuel exhausted",unique=True)
+    pumpCo2factorAttribute = _addAttribute(session,pumpAsset,co2FactorAttributeType.typename,str(args.co2factor))
+
+    engineManufacturerAttributeType = _addAttributeType(session,"engine:manufacturer","Engine Manufacturer","Manufacturer of Engine",unique=True)
+    pumpEngineManufacturer = _addAttribute(session,pumpAsset,engineManufacturerAttributeType.typename,args.engineManufacturer)
+
+    transmissionManufacturerAttributeType = _addAttributeType(session,"transmisson:manufacturer","Engine Manufacturer","Manufacturer of Engine",unique=True)
+    pumpTransmissionManufacturer = _addAttribute(session,pumpAsset,transmissionManufacturerAttributeType.typename,args.transmissionManufacturer)
+
+    trackingNumberAttributeType = _addAttributeType(session,"eku:tn","EKU Asset Tracking Number","EKU Power Drives product tracking ID",is_id=True)
+    ruthTNattribute = _addAttribute(session,ruthAsset,trackingNumberAttributeType.typename,args.ruthTN,True)
+
+    serialAttributeType = _addAttributeType(session,"serial:esn","electronic serial"," ",is_id=True)
+    ruthSerialAttribute = _addAttribute(session,ruthAsset,"serial:esn",args.ruthSerialESN,True)
+
+    ruthRelation = _addRelation(session,'sophia:source',pumpAsset,ruthAsset)
+
+    if args.enclosure or args.powermodule:
+        _addRelationType(session,"equipment:partof","Part of",False,False)
+
+    if (args.enclosure is not None):
+        enclosureAssetClass = _addAssetClass(session,"eku:esc:enclosure","EKU ESC Enclosure","ESC Enclosure")
+        enclosureAsset = _addAsset(session,"EKU Enclosure "+args.enclosure,enclosureAssetClass)
+
+        enclosureTNattribute = _addAttribute(session,enclosureAsset,"eku:tn",args.enclosure,True)
+
+        enclosureRelation = _addRelation(session,"equipment:partof",enclosureAsset,pumpAsset)
+        enclosureRuthRelation = _addRelation(session,'sophia:source',enclosureAsset,ruthAsset)
+
+    if (args.powermodule is not None):
+        powermoduleAssetClass = _addAssetClass(session,"eku:esc:power-module","EKU ESC Power Module","ESC Power Module")
+        powermoduleAsset = _addAsset(session,"EKU Power Module "+args.powermodule,powermoduleAssetClass)
+
+        powermoduleTNattribute = _addAttribute(session,powermoduleAsset,"eku:tn",args.powermodule,True)
+
+        powermoduleRelation = _addRelation(session,"equipment:partof",powermoduleAsset,pumpAsset)
+        powermoduleRuthRelation = _addRelation(session,'sophia:source',powermoduleAsset,ruthAsset)
+    
+    if (args.vulcan is not None):
+        vulcanAssetClass = _addAssetClass(session,"eku:esc:vulcan","EKU ESC Vulcan","ESC Vulcan")
+        vulcanAsset = _addAsset(session,"EKU Vulcan "+args.vulcan,vulcanAssetClass)
+
+        vulcanTNattribute = _addAttribute(session,vulcanAsset,"eku:tn",args.vulcan,True)
+
+        vulcanRelation = _addRelation(session,"equipment:partof",vulcanAsset,pumpAsset)
+        vulcanRuthRelation = _addRelation(session,'sophia:source',vulcanAsset,ruthAsset)
+
+    session.commit()
+    session.close()
+
+
+logging.config.dictConfig(app_conf['logging'])
+db = sqlalchemy.create_engine(app_conf['SQLALCHEMY_DATABASE_URI'])
+sessionmk = sessionmaker(bind=db)
+cliparser = argparse.ArgumentParser()
+clisubparsers = cliparser.add_subparsers()
+
+cligetparser = clisubparsers.add_parser("get",help="Get Entrys from Asset Service")
+cligetparser.set_defaults(func=get)
+cligetparser.add_argument("type",choices=['assets','attributes','relations'])
+cligetparser.add_argument("-F","--filter")
+
+clipumpparser = clisubparsers.add_parser("pump",help="Add new Pump to Asset Service")
+clipumpparser.set_defaults(func=pump)
+clipumpparser.add_argument("pumpNumber",type=str,help="Identification Number / Name of Pump")
+clipumpparser.add_argument("ruthTN",type=str,help="Tracking Number of Ruth Module in Format: TN-XXXX-XXXX-XXXX-XXXX")
+clipumpparser.add_argument("ruthSerialESN",type=str,help="Serial ESN Number of Ruth Module in Format: 0xXXXXXXXXXXXX")
+clipumpparser.add_argument("idleAFC",type=float,help="Average fuel consumtion of pump engine on idle in liters/hour")
+clipumpparser.add_argument("co2factor",type=float,help="carbon dioxide exhaust per amout of fuel on idle in kilograms/liter")
+clipumpparser.add_argument("engineManufacturer",type=str,help="Engine Manufacturer")
+clipumpparser.add_argument("transmissionManufacturer",type=str,help="Transmission Manufacturer")
+clipumpparser.add_argument("-E","--enclosure",type=str,help="Tracking Numper of ESC Enclosure in Format: TN-XXXX-XXXX-XXXX-XXXX")
+clipumpparser.add_argument("-P","--powermodule",type=str,help="Tracking Number of Power Module in Format: TN-XXXX-XXXX-XXXX-XXXX")
+clipumpparser.add_argument("-V","--vulcan",type=str,help="Tracking Number of Vulcan in Format: TN-XXXX-XXXX-XXXX-XXXX")
+
+
+clipumpparser = clisubparsers.add_parser("fatnode",help="Add new Fatnode to Asset Service")
+clipumpparser.set_defaults(func=fatnode)
+clipumpparser.add_argument("FatnodeTN",type=str,help="Tracking Number of Fatnode in Format: TN-XXXX-XXXX-XXXX-XXXX")
+clipumpparser.add_argument("FatnodeUUID",type=str,help="UUID of Fatnode")
+clipumpparser.add_argument("DataVanNumber",type=str,help="Identification Number / Name of Datavan")
+
+
+
+args = cliparser.parse_args()
+if hasattr(args, 'func'):
+    args.func(args)

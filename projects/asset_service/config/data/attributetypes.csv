@@ -1,0 +1,6 @@
+typename;display_name;description;unique
+equipment:serial;Serial Number;a unique manufacturer serial number;t
+equipment:manufacturer;Manufacturer;Manufacturer Name;t
+equipment:model;Model;Model / Type name;t
+equipment:dom;Manufacture Date;;t
+equipment:weight;Weight;;t
