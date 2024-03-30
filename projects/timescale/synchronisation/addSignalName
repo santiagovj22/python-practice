@@ -1,0 +1,11 @@
+#!/bin/bash
+for path in /dbdumps/timescale_tables/profrac__data_01_29_onlyDoubles/*; do
+    filename=$(echo "$path" | sed "s/.*\///")
+    #awk -v myname="$filename" 'BEGIN{OFS="\t"}{print $1, $2, $3,$4 ,$5 ,$6, $7, $8,myname,$9,$10}' $path > tmp && mv tmp $path
+    awk -v myname="$filename" 'BEGIN{OFS="\t"}{print $0,myname}' $path > tmp && mv tmp $path #add dataype to end of each line
+    sed -i 's/ \+/./g' $path #replace whitespace (from awk->dont know why) with .
+    echo $filename      
+done
+
+#awk 'BEGIN{OFS="\t"}{print $0,"test"}' original > tmp && mv tmp after1
+#example do it in one line $ awk -F ',' '{print $2","$5","$7","$10}' file | psql -d db -c "\copy MyTable from STDIN csv header"

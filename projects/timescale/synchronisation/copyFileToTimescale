@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# This script copies the data from the files in the specified folder to timescale table
+# -> make sure that you choose the correct table name and folder path
+
+
+#for path in /dbdumps/timescale_tables/profrac__data_01_29_onlyDoubles/*; do
+#for path in /dbdumps/timescale_tables/profrac__data_02_09/*; do
+#for path in /dbdumps/timescale_tables/profrac__data_02_09/{powertrain__engine_oil_pressure,powertrain__engine_oiltemp,powertrain__engine_speed_request,powertrain__engine_speed_rpm,powertrain__engine_torque,powertrain__transmission*}; do
+for path in /dbdumps/timescale_tables/trican__data_03_10/*; do
+    filename=$(echo "$path" | sed "s/.*\///")
+    psql -h 127.0.0.1 -U ekupd__timescale_syncer trican__data_timescale -c "\copy data_raw.$filename FROM '$path'" 
+    echo $filename
+done
+
+# This line adds the filename(signalname) as last column to the txt file
+# awk -v myname="$filename" 'BEGIN{OFS="\t"}{print $0,myname}' $path | psql -h 127.0.0.1 -U ekupd__timescale_syncer profrac__data_timescale -c "\copy ts.data_float8 FROM STDIN" 
+
+# Test for timescale parallel copy -> couldn't get it running:
+#DB_HOST=127.0.0.1
+#DB_USER=ekupd_timescale_syncer
+#DB_PASSWORD=
+#DB_PORT=5432
+#CONNECTION="host=$DB_HOST user=$DB_USER password=$DB_PASSWORD port=$DB_PORT sslmode=require"
+#echo $CONNECTION
+#psql $CONNECTION
+#timescaledb-parallel-copy -file $path -connection $CONNECTION -db-name=profrac__data_timescale
+
+
+
+
+

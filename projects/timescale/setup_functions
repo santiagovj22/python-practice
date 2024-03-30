@@ -1,0 +1,185 @@
+
+CREATE OR REPLACE FUNCTION create_raw_data_tables(_customer varchar)
+RETURNS void 
+LANGUAGE plpgsql
+AS
+$$
+DECLARE 
+    _datatypes RECORD; --variable that holds one record of a select
+    _tableExists BOOLEAN;
+BEGIN
+    FOR _datatypes IN SELECT * FROM datatypes
+    LOOP
+    --check if table already exists
+    SELECT EXISTS INTO _tableExists (SELECT 1 FROM pg_tables WHERE schemaname = 'data_raw' AND tablename = _datatypes.typename);
+        IF(_tableExists = FALSE) THEN
+
+        --create new table for each signal type
+        EXECUTE format(
+            '
+                CREATE TABLE IF NOT EXISTS data_raw.%I (
+                uuid uuid DEFAULT uuid_generate_v4() NOT NULL,
+                time_utc timestamp without time zone NOT NULL,
+                time_mono bigint,
+                rcvtime_mono bigint,
+                asset uuid,
+                meta_source bigint NOT NULL REFERENCES meta_source(id),
+                meta_quality bigint REFERENCES meta_quality(id),
+                sync_prio INT,
+                data %s,
+                PRIMARY KEY(meta_source,time_utc)
+                );
+            ',_datatypes.typename ,_datatypes.datatype);
+
+            EXECUTE format(
+            '   CREATE INDEX IF NOT EXISTS %I_asset_time_utc_index ON data_raw.%I(asset, time_utc DESC);
+                ALTER TABLE data_raw.%I OWNER TO %I__data_adm;
+                GRANT INSERT, SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES,TRIGGER ON data_raw.%I TO %I__data_rw;
+                GRANT SELECT ON data_raw.%I TO %I__data_ro;
+                GRANT SELECT,INSERT,UPDATE,DELETE ON data_raw.%I TO ekupd__timescale_syncer;
+            ' ,_datatypes.typename,_datatypes.typename,_datatypes.typename,_customer, _datatypes.typename,_customer, _datatypes.typename,_customer,_datatypes.typename); 
+            
+            IF(_datatypes.hypertable = TRUE) THEN
+                EXECUTE format(
+                '
+                    SELECT create_hypertable(''data_raw.%I'',''time_utc'',chunk_time_interval => INTERVAL %L,if_not_exists => TRUE);
+                    SELECT add_reorder_policy(''data_raw.%I'',''%I_asset_time_utc_index'');
+                ',_datatypes.typename,_datatypes.chunk_size,_datatypes.typename,_datatypes.typename);
+            END IF;
+
+               
+               --ALTER TABLE data_raw.%I SET (
+               --   timescaledb.compress,
+               --   timescaledb.compress_segmentby = ''asset, meta_source, meta_quality'',
+               --   timescaledb.compress_orderby = ''time_utc DESC''
+               -- );
+               --SELECT add_compression_policy(''data_raw.%I'', INTERVAL ''3 months'');
+        END IF;
+    END LOOP;
+END$$;
+
+/*
+* Materialized Views
+* Indexes: Timescale automatically create composite indexes on each column specified in the GROUP BY combined with the time_bucket
+* Materialized Views: https://blog.timescale.com/blog/continuous-aggregates-faster-queries-with-automatically-maintained-materialized-views/
+*   end_offset = end of refresh window relative to current time -> it seldom makes sense to use NULL for the end_offset. Instead, it is recommended to set the end_offset so that at least the most recent time bucket is excluded
+*                                                                -> time buckets that still see lots of writes will quickly have out-of-date aggregates. Excluding those time buckets will provide better performance
+*   start_offset =  start of refresh window relative to current time. Should be at least 2 bucket widths of the aggregate time_bucket value.
+                    If set to NULL any data that is remove from hypertable is also removed from materialized view. But NULL is also very aggressive, it will go back to beginning of time on each refresh to verify Functionality 
+                    Start offset can also be used to delete old data from raw data, but keep it in the buckets.
+*
+*/
+CREATE OR REPLACE FUNCTION create_materialized_views(_customer varchar)
+RETURNS void 
+LANGUAGE plpgsql
+AS
+$$
+DECLARE 
+    _datatype RECORD;
+    _schema RECORD;
+    _viewExists BOOLEAN;
+BEGIN
+    FOR _datatype IN SELECT typename,datatype,hypertable FROM datatypes
+    LOOP
+        FOR _schema IN SELECT * FROM schemas_buckets
+        LOOP
+            --check if view already exists
+            SELECT EXISTS INTO _viewExists (SELECT 1 FROM pg_views WHERE schemaname = _schema.schema_name AND viewname = _datatype.typename);
+            IF(_viewExists = FALSE AND _datatype.hypertable = TRUE) THEN
+                IF(_datatype.datatype = 'float8') THEN
+                    --create new materialized view for each signal type
+                    EXECUTE format(
+                        '
+                            CREATE MATERIALIZED VIEW %s.%I
+                            WITH (timescaledb.continuous) AS
+                            SELECT asset,
+                                   time_bucket(INTERVAL %L, time_utc) AS bucket,
+                                   avg(data),
+                                   max(data),
+                                   min(data),
+                                   count(data),
+                                   first(data,time_utc) AS first_value,
+                                   last(data,time_utc) AS last_value,
+                                   stddev(data),
+                                    min(time_utc) AS first_time_utc,
+                                    max(time_utc) AS last_time_utc
+                            FROM data_raw.%I
+                            GROUP BY asset,bucket
+                            WITH NO DATA;
+                            ALTER MATERIALIZED VIEW %I.%I OWNER TO %I__data_adm;
+                            GRANT INSERT, SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES,TRIGGER ON %I.%I TO %I__data_rw,ekupd__timescale_syncer;
+                            GRANT SELECT ON %I.%I TO %I__data_ro;
+
+                            SELECT add_continuous_aggregate_policy(''%I.%I'',
+                            start_offset => NULL,
+                            end_offset => INTERVAL ''5 days'',
+                            schedule_interval => INTERVAL ''1 day'');
+                        '
+                        ,_schema.schema_name,_datatype.typename,_schema.bucket_size,_datatype.typename,_schema.schema_name,_datatype.typename,_customer,_schema.schema_name,_datatype.typename,_customer,_schema.schema_name,_datatype.typename,_customer,_schema.schema_name,_datatype.typename); 
+                    ELSEIF(substring(_datatype.datatype,1,7) = 'varchar') THEN
+                        --create new materialized view for each signal type
+                        EXECUTE format(
+                            '
+                                CREATE MATERIALIZED VIEW %s.%I
+                                WITH (timescaledb.continuous) AS
+                                SELECT asset,
+                                       time_bucket(INTERVAL %L, time_utc) AS bucket,
+                                       count(data),
+                                       first(data,time_utc) AS first_value,
+                                       last(data,time_utc) AS last_value,
+                                        min(time_utc) AS first_time_utc,
+                                        max(time_utc) AS last_time_utc
+                                FROM data_raw.%I
+                                GROUP BY asset,bucket
+                                WITH NO DATA;
+                                ALTER MATERIALIZED VIEW %I.%I OWNER TO %I__data_adm;
+                                GRANT INSERT, SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES,TRIGGER ON %I.%I TO %I__data_rw,ekupd__timescale_syncer;
+                                GRANT SELECT ON %I.%I TO %I__data_ro;
+
+                                SELECT add_continuous_aggregate_policy(''%I.%I'',
+                                start_offset => NULL,
+                                end_offset => INTERVAL ''5 days'',
+                                schedule_interval => INTERVAL ''1 day'');
+                            '
+                            ,_schema.schema_name,_datatype.typename,_schema.bucket_size,_datatype.typename,_schema.schema_name,_datatype.typename,_customer,_schema.schema_name,_datatype.typename,_customer,_schema.schema_name,_datatype.typename,_customer,_schema.schema_name,_datatype.typename);
+                    END IF;
+            END IF;
+        END LOOP;
+    END LOOP;
+END$$;
+
+/*
+* View over raw data, which shows meta data
+*/
+CREATE OR REPLACE FUNCTION create_meta_views(_customer varchar)
+RETURNS void 
+LANGUAGE plpgsql
+AS
+$$
+DECLARE 
+    _datatype RECORD;
+    _schema RECORD;
+    _viewExists BOOLEAN;
+BEGIN
+    FOR _datatype IN SELECT typename FROM datatypes
+    LOOP
+       
+    SELECT EXISTS INTO _viewExists (SELECT 1 FROM pg_views WHERE schemaname = 'data_meta_raw' AND viewname = _datatype.typename);
+        IF(_viewExists = FALSE) THEN
+            --create meta view for each raw signal type
+            EXECUTE format('
+                CREATE VIEW data_meta_raw.%I AS
+                SELECT  %I.*,
+                        s.source, 
+                        q.quality AS quality
+                FROM data_raw.%I 
+                LEFT JOIN meta_source s ON data_raw.%I.meta_source = s.id
+                LEFT JOIN meta_quality q ON data_raw.%I.meta_quality = q.id;
+
+                ALTER VIEW data_meta_raw.%I OWNER TO %I__data_adm;
+                GRANT INSERT, SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES,TRIGGER ON data_meta_raw.%I TO %I__data_rw,ekupd__timescale_syncer;
+                GRANT SELECT ON data_meta_raw.%I TO %I__data_ro;
+            ',_datatype.typename, _datatype.typename, _datatype.typename, _datatype.typename, _datatype.typename, _datatype.typename,_customer, _datatype.typename,_customer, _datatype.typename,_customer);
+        END IF;
+    END LOOP;
+END$$;

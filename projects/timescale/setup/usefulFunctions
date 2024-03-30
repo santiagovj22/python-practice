@@ -1,0 +1,51 @@
+
+
+
+
+/*
+    EXECUTE SQL queries on many tables
+*/
+DO $$ DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'data_raw' AND tablename NOT IN ('data', 'datatypes','sync', 'alembic_version','temp_data_table','timescale_types','hosts')) ORDER BY tablename LOOP
+    --RAISE INFO '%',quote_ident(r.tablename);
+    --EXECUTE 'DROP TABLE ts.' || quote_ident(r.tablename) || ' CASCADE';
+    --EXECUTE 'ALTER TABLE ts.' || quote_ident(r.tablename) || ' DROP COLUMN uuid_original';
+      EXECUTE 'SELECT set_chunk_time_interval('''|| CONCAT('data_raw.',quote_ident(r.tablename)) ||''',INTERVAL ''6 days'')';
+   --EXECUTE 'DELETE FROM ts.' || quote_ident(r.tablename);
+    EXECUTE 'GRANT INSERT, SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES,TRIGGER ON ' || CONCAT('data_raw.',quote_ident(r.tablename)) || ' TO  trican__data_rw,ekupd__timescale_syncer';
+    EXECUTE 'GRANT SELECT ON ' || CONCAT('data_raw.',quote_ident(r.tablename)) || ' TO  trican__data_ro';
+
+    --EXECUTE 'GRANT INSERT, SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES,TRIGGER ON ' || quote_ident(r.tablename) || ' TO profrac__data_rw';
+    --EXECUTE 'ALTER TABLE ' || quote_ident(r.tablename) || ' OWNER TO profrac__data_adm';
+    --EXECUTE 'REVOKE ALL PRIVILEGES ON ' || quote_ident(r.tablename) || ' FROM profrac__assets_ro';
+    --EXECUTE 'ALTER TABLE ts.' || quote_ident(r.tablename) || ' DROP COLUMN uuid_original';
+    --EXECUTE 'VACUUM FULL ts.' || quote_ident(r.tablename);
+
+  END LOOP;
+END $$;
+
+/*
+    EXECUTE SQL queries on many materialized views
+*/
+
+DO $$ DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN (SELECT viewname,schemaname FROM pg_views WHERE viewname = 'oilandgas__frac_pump_powertrain_pump_current_flow' OR viewname = 'oilandgas__frac_pump_powertrain_pump_discharge_pressure' OR viewname = 'oilandgas__frac_pump_powertrain_pump_hydraulic_power') LOOP
+    RAISE INFO '%',CONCAT(quote_ident(r.schemaname),'.',quote_ident(r.viewname));
+    --EXECUTE 'CALL refresh_continuous_aggregate(''' ||CONCAT(quote_ident(r.schemaname),'.',quote_ident(r.viewname)) ||''',NULL,''2021-03-6''';
+    --EXECUTE 'DROP MATERIALIZED VIEW ' ||CONCAT(quote_ident(r.schemaname),'.',quote_ident(r.viewname));
+
+  END LOOP;
+END $$;
+
+-- Test Syncing:
+INSERT INTO data (uuid,time_utc,rcvtime_utc,rcvtime_mono,source,asset,type,data,validated) VALUES ('11111111-66e7-497c-83fd-aa9ed4af43df','2019-08-01 00:00:00',NOW(),0,'00000000-0000-4000-0000-000000000000','44b0e1d3-aa7c-4f28-808a-33bf5b08c581','oilandgas:frac-pump:oph:esc-mode.1','{"ready": {"value": 0}, "active": {"value": 0}, "engine": {"value": 0}, "pumping": {"value": 0}, "nonpumping": {"value": 0}, "conditioning": {"value": 0}}',False)
+UPDATE data SET data=jsonb_set(data::jsonb, '{ready}', '{"value": 247.572}') WHERE uuid='6f1dc193-19af-4bf3-a20b-482b63c5fbb4';
+SELECT time_utc, (data->'pumping'->>'value')::float AS pumping,(data->'ready'->>'value')::float AS ready,(data->'active'->>'value')::float AS active FROM data WHERE asset ='661c30ca-8954-4a67-a01e-991db9e0cbc3' AND type='oilandgas:frac-pump:oph:esc-mode.1' AND time_utc BETWEEN '2020-12-18T06:52:24.674Z' AND '2020-12-23T01:25:38.346Z' AND (data->'ready'->>'value')::float>730.0 ORDER BY time_utc ASC;
+UPDATE data SET data=jsonb_set(data::jsonb, '{ready}', '{"value": 682.953}') WHERE asset ='661c30ca-8954-4a67-a01e-991db9e0cbc3' AND type='oilandgas:frac-pump:oph:esc-mode.1' AND time_utc BETWEEN '2020-12-18T06:52:24.674Z' AND '2020-12-23T01:25:38.346Z' AND (data->'ready'->>'value')::float>730.0;
+
+
+

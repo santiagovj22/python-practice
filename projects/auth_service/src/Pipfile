@@ -1,0 +1,22 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pylint = "*"
+coverage = "*"
+
+[packages]
+flask = "*"
+flask-cors = "*"
+flask-restx = "*"
+flask-pymongo = "*"
+python-dotenv = "*"
+pymongo-migrate = "*"
+flask-jwt-extended = "*"
+cryptography = "*"
+pymongo-inmemory = "*"
+
+[requires]
+python_version = "3.6"

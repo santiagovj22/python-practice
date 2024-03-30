@@ -1,0 +1,14 @@
+2021-08-08 11:43:08,275 INFO Database Connection MainThread : Start production database
+2021-08-08 11:43:08,279 INFO Auth Controller MainThread : Starting Auth Controller
+2021-08-08 11:43:08,280 INFO Auth Service MainThread : Starting users service
+2021-08-08 11:59:17,304 INFO Auth Controller MainThread : Starting Auth Controller
+2021-08-08 11:59:17,304 INFO Auth Service MainThread : Starting users service
+2021-08-08 12:06:18,814 INFO werkzeug MainThread :  * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+2021-08-08 13:54:53,082 INFO Database Connection MainThread : Start production database
+2021-08-08 13:54:53,086 INFO Auth Controller MainThread : Starting Auth Controller
+2021-08-08 13:54:53,087 INFO Auth Service MainThread : Starting users service
+2021-08-08 18:01:45,461 INFO Auth Controller Thread-6 : Entering to login user
+2021-08-08 18:01:45,461 INFO Auth Controller Thread-6 : <Request 'http://localhost:5000/api/v1/auth/login' [POST]>
+2021-08-08 18:01:45,461 INFO Auth Controller Thread-6 : eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJqTzFyU0dwcWdVNW9FYldsN2pKUkhHaUdfeGU5Rk5lUlhmb1htTVE0UGY0In0.eyJqdGkiOiJmZmM5YjQxZi05ZjhjLTRhMTItODBlNy1mZWZkZTE5MjZmZDEiLCJleHAiOjE1OTQzMzYwMDUsIm5iZiI6MCwiaWF0IjoxNTk0MzM1NzA1LCJpc3MiOiJodHRwczovL2Rldi5sb2dpbi5qYWxhLW9uZS5jb20vYXV0aC9yZWFsbXMvdHJhdmVsZXIiLCJhdWQiOiJ0cmF2ZWxlci1hcHAiLCJzdWIiOiIzZWY5M2FlOS1kNzkyLTRiZTAtYjBjYy1jODQyMmU4NTFiMTEiLCJ0eXAiOiJJRCIsImF6cCI6InRyYXZlbGVyLWFwcCIsIm5vbmNlIjoiOTc5YmEyMjUtZDUyMC00OWY0LTk4MmQtMDFiMTYzNDI4M2YyIiwiYXV0aF90aW1lIjoxNTk0MzM1NzAxLCJzZXNzaW9uX3N0YXRlIjoiZmExYmVmOWMtYzhkYS00ODk5LWFhZjktNDAwYTRlNjYyN2VkIiwiYWNyIjoiMSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwibmFtZSI6IkcuIEFsYmVpcm8gQy4iLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJnYWxiZWlyb2NAZ21haWwuY29tIiwiZ2l2ZW5fbmFtZSI6IkcuIEFsYmVpcm8iLCJmYW1pbHlfbmFtZSI6IkMuIiwiZW1haWwiOiJnYWxiZWlyb2NAZ21haWwuY29tIn0.DhP48jL7vhPKJxCspkO9Gpy4mYxNU8yTPlsh0DuLDJp3tUpJjNontHsRtr228A2ZV9qwKaH4necbPBM9gc1F317-bG5_TuA0TTYnIlniB4bypNgiAQHPjk6TAJXvH4kN5OpnQmCJPH3u-g3CvjGrSVArtdZEbtKxfoY4Na4A5Vxzv2K52f0-CWPnofGTjLS4Rze4fInbpD5XckVZ7PynxyF5TWTMTBsoJyUsFX4V_QbcE7swcEMCQV92-_6HZTUfcD3-MMa6Qe8jWoGCNfn1IXUxHRcaxzcKW9KH6UZOJe1pF_Z_h3W1n54wq8zHcdBp4dJIUV1CE2jW2OQjVwGyEA
+2021-08-08 18:01:45,752 INFO Auth Controller Thread-6 : {'jti': 'ffc9b41f-9f8c-4a12-80e7-fefde1926fd1', 'exp': 1594336005, 'nbf': 0, 'iat': 1594335705, 'aud': 'auth service', 'sub': '3ef93ae9-d792-4be0-b0cc-c8422e851b11', 'typ': 'ID', 'azp': 'auth-service', 'nonce': '979ba225-d520-49f4-982d-01b1634283f2', 'auth_time': 1594335701, 'session_state': 'fa1bef9c-c8da-4899-aaf9-400a4e6627ed', 'acr': '1', 'email_verified': False, 'name': 'pollo frito', 'preferred_username': 'test@kfc.com', 'given_name': 'pollo frito', 'family_name': 'kfc', 'email': 'test@kfc.com', 'type': 'access', 'fresh': False, 'user_claims': {}}
+2021-08-08 18:01:45,753 INFO Users Dao Thread-6 : Verify User Registered

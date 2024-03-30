@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+
+  auth_service:
+    container_name: auth_service
+    image: $CI_REGISTRY_IMAGE/auth_service
+    environment:
+      DB_AUTH_CONNECTION: $DB_AUTH_CONNECTION
+      JWT_ALGORITHM: $JWT_ALGORITHM
+      JWT_DECODE_AUDIENCE: $JWT_DECODE_AUDIENCE
+      JWT_IDENTITY_CLAIM: $JWT_IDENTITY_CLAIM
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    ports:
+      - '5000:5000'

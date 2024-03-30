@@ -1,0 +1,34 @@
+/* This is an postgres function which copies all signals from data table to one file per signal type
+ You will need the timescale_types table to use this function--
+ Create this function in old postgres database
+ Copy all messages from table data to local files. Function must be executed as postgres superuser
+ Input parameters: time = data with time_utc < timestamp will be copied example:2021-01-28 16:00:00.0
+                   path = folder where files are stored. Postgres user must have write permission to this folder. Example /dbdumps/timescale_tables/profrac__data_01_29
+
+Usage: sudo -u postgres psql trican__data -c "SELECT * FROM copy_data_to_file('2021-03-10 16:00:00.000000','/dbdumps/timescale_tables/trican__data_03_10');"
+*/
+CREATE OR REPLACE FUNCTION copy_data_to_file(until timestamp, path TEXT)
+RETURNS void
+LANGUAGE plpgsql
+AS
+$$
+DECLARE 
+    temprow RECORD;
+    start_time timestamptz := clock_timestamp();
+
+BEGIN
+    FOR temprow IN SELECT typename, old_typename, json_getter FROM timescale_types ORDER BY old_typename LOOP --iterate over each old signaltype 
+        RAISE INFO 'COPY %', temprow.typename;
+
+            EXECUTE format(
+                'COPY (SELECT uuid,time_utc, time_mono, rcvtime_mono,asset,
+                        ms.id, NULL,NULL,%s  
+                    FROM data 
+                    LEFT JOIN meta_source ms ON data.source = (ms.source->>''fatnode'')::uuid
+                    WHERE type=%L AND time_utc < ''%s'') TO ''%s/%I'' '
+                ,temprow.json_getter,temprow.old_typename,$1,$2,temprow.typename    
+            );
+            Raise INFO 'copied % : total time spent=%', temprow.typename, clock_timestamp() - start_time;        
+    END LOOP;
+END$$;
+

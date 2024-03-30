@@ -1,0 +1,23 @@
+# Use postgres/example user/password credentials
+version: '3.1'
+services:
+  db:
+    image: timescale/timescaledb:latest-pg10
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: data
+      POSTGRES_USER: dataservice
+      POSTGRES_DB: dataservice
+    ports:
+      - 5432:5432
+    networks: 
+      - web-networks
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    networks: 
+      - web-networks
+networks: 
+  web-networks:
