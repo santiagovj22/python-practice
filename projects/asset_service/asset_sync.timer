@@ -1,0 +1,10 @@
+[Unit]
+Description=periodically synchronize assets with SOPHIA cloud
+
+[Timer]
+OnUnitActiveSec=2h
+OnStartupSec=30s
+
+[Install]
+WantedBy=timers.target
+

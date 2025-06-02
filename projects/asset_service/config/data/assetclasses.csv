@@ -1,0 +1,10 @@
+classname;display_name;description
+oilandgas:frac-pump;Frac Pump;high pressure fluid pump for well stimulation / hydraulic fracturing
+oilandgas:frac-fleet;Frac Fleet;a frac fleet or also referred to as a spread is a set of mobile equipment used for frac stimulation jobs
+mobile:trailer;Trailer;mobile equipment that can carry load or permanently mounted machinery. Trailers need a tractor to be moved
+mobile:tractor;Tractor;used to move trailers
+parts:engine;Engine;power engine used to supply mechanical power to a machine / process
+parts:transmission;Transmission;a torque / rpm converter with selectable gear, used to convert mechanical power between engine and application
+parts:pump:power-end;Power End;the (mechanical) power input of a pump
+parts:pump:fluid-end;Fluid End;the part of a pump with fluid contact (including check valves etc.)
+sophia:data-source;SOPHIA Data Source;this asset is a SOPHIA data source

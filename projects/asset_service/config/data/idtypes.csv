@@ -1,0 +1,3 @@
+typename;display_name;description;regex
+eku:tn;EKU Tracking Number;EKU Power Drives serial / tracking numbers;
+asset:id;Asset ID;a generic asset ID, managed by any generic external asset management tool;
